@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:14.2-alpine
+    environment:
+      POSTGRES_DB: "bookshelves_db"
+      POSTGRES_USER: "bookshelves_user"
+      POSTGRES_PASSWORD: "bookshelves_pass"
+    command: postgres -c 'max_connections=2000'
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    # healthcheck:
+    #   test:
+    #     [
+    #       "CMD",
+    #       "pg_isready",
+    #       "-d",
+    #       "drum_school_db",
+    #       "-U",
+    #       "drum_school_user"
+    #     ]
+    #   interval: 1s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 1s
+
+  server:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_started
+      event-worker:
+        condition: service_started
+    entrypoint: [ "bash", "run_server.sh" ]
+
+    
+
+  webapp:
+    build:
+      context: .
+      dockerfile: webapp/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    networks:
+      - frontend
+    entrypoint: [ "http-server", "--proxy", "http://localhost:8080?" ]
+
+networks:
+  backend: {}
+  frontend: {}
